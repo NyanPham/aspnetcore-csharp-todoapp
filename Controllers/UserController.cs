@@ -1,3 +1,5 @@
+using System.Data;
+using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using todoapp.Data;
 using todoapp.Dtos;
@@ -10,7 +12,6 @@ namespace todoapp.Controllers
 
     public class UserController : ControllerBase
     {
-
         DataContextDapper _dapper;
 
         public UserController(IConfiguration config)
@@ -18,79 +19,64 @@ namespace todoapp.Controllers
             _dapper = new DataContextDapper(config);
         }
 
-        [HttpGet("Users")]
-        public IEnumerable<User> GetUsers()
+        [HttpGet("Users/{userId}")]
+        public IEnumerable<User> GetUsers(int userId = 0)
         {
             string sql = @"
-                SELECT 
-                    [UserId],
-                    [FirstName],
-                    [LastName],
-                    [Email], 
-                    [Gender], 
-                    [Active]
-                 FROM TodoAppSchema.Users
+                EXEC TodoAppSchema.spUsers_Get
             ";
 
-            return _dapper.LoadData<User>(sql);
-        }
+            string parameters = "";
+            DynamicParameters sqlParameters = new DynamicParameters();
 
-        [HttpGet("Users/{userId}")]
-        public User GetUser(int userId)
-        {
-            string sql = @"
-                SELECT 
-                    [UserId],
-                    [FirstName],
-                    [LastName],
-                    [Email], 
-                    [Gender], 
-                    [Active]
-                FROM TodoAppSchema.Users
-                    WHERE UserId = " + userId.ToString();
+            if (userId != 0)
+            {
+                parameters += "@UserId=@UserIdParam";
+                sqlParameters.Add("UserIdParam", userId, DbType.Int32);
+            }
 
-            return _dapper.LoadDataSingle<User>(sql);
+            if (parameters.Length > 0)
+                sql += parameters;
+
+            return _dapper.LoadDataWithParameters<User>(sql, sqlParameters);
         }
 
         [HttpPost("Users")]
-        public IActionResult AddUser(UserToAddDto userToAdd)
+        public IActionResult UpsertUser(User userToUpsert)
         {
             string sql = @"
-                INSERT INTO TodoAppSchema.Users (
-                    [FirstName]
-                    ,[LastName]
-                    ,[Email]
-                    , [Gender]
-                    , [Active]
-                )   VALUES (" +
-                "'" + userToAdd.FirstName +
-                "', '" + userToAdd.LastName +
-                "', '" + userToAdd.Email +
-                "', '" + userToAdd.Gender +
-                "', 1)";
+                EXEC TodoAppSchema.sp_Users_Upsert
+                    @FirstName=@FirstNameParam,
+                    @LastName=@LastnameParam,
+                    @Email=@EmailParam,
+                    @Gender=@GenderParam,
+                    @Active=@ActiveParam
+            ";
+            string parameters = "";
 
-            if (!_dapper.ExecuteSql(sql))
-                return StatusCode(401, "Failed to add user!");
+            DynamicParameters sqlParameters = new DynamicParameters();
+            sqlParameters.Add("@FirstNameParam", userToUpsert.FirstName, DbType.String);
+            sqlParameters.Add("@LastnameParam", userToUpsert.LastName, DbType.String);
+            sqlParameters.Add("@EmailParam", userToUpsert.Email, DbType.String);
+            sqlParameters.Add("@GenderParam", userToUpsert.Gender, DbType.String);
+            sqlParameters.Add("@ActiveParam", userToUpsert.Active, DbType.Boolean);
 
-            return Ok();
-        }
 
-        [HttpPut("Users/{userId}")]
-        public IActionResult EditUser(int userId, UserToEditDto userToEdit)
-        {
-            string sql = @"
-                UPDATE TodoAppSchema.Users
-                    SET FirstName = '" + userToEdit.FirstName +
-                        "', LastName = '" + userToEdit.LastName +
-                        "', Email = '" + userToEdit.Email +
-                        "', Gender = '" + userToEdit.Gender +
-                        "', Active = '" + userToEdit.Active +
-                    "' WHERE UserId = " + userId.ToString();
+            if (userToUpsert.UserId != 0)
+            {
+                parameters += ", @UserId=@UserIdParam";
+                sqlParameters.Add("@UserIdParam", userToUpsert.UserId, DbType.Int32);
+            }
+
+            if (parameters.Length > 0)
+            {
+                sql += parameters;
+            }
 
             Console.WriteLine(sql);
 
-            if (!_dapper.ExecuteSql(sql))
-                return StatusCode(400, "Failed to edit user!");
+            if (!_dapper.ExecuteSqlWithParameters(sql, sqlParameters))
+                return StatusCode(401, "Failed to upsert user!");
 
             return Ok();
         }
@@ -98,11 +84,14 @@ namespace todoapp.Controllers
         [HttpDelete("Users/{userId}")]
         public IActionResult DeleteUser(int userId)
         {
-            string sql = @"
-                DELETE TodoAppSchema.Users
-                    WHERE UserId = " + userId.ToString();
+            string sql = @"TodoAppSchema.spUsers_Delete 
+                @UserId=@UserIdParam
+            ";
 
-            if (!_dapper.ExecuteSql(sql))
+            DynamicParameters sqlParameters = new DynamicParameters();
+            sqlParameters.Add("UserIdParam", userId, DbType.Int32);
+
+            if (!_dapper.ExecuteSqlWithParameters(sql, sqlParameters))
                 return StatusCode(400, "Failed to delete user!");
 
             return Ok();
