@@ -94,6 +94,19 @@ namespace todoapp.Controllers
 
             return Ok();
         }
+
+        [HttpDelete("Users/{userId}")]
+        public IActionResult DeleteUser(int userId)
+        {
+            string sql = @"
+                DELETE TodoAppSchema.Users
+                    WHERE UserId = " + userId.ToString();
+
+            if (!_dapper.ExecuteSql(sql))
+                return StatusCode(400, "Failed to delete user!");
+
+            return Ok();
+        }
     }
 }
 
