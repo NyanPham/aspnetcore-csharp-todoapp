@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using todoapp.Data;
 using todoapp.Dtos;
 using todoapp.Models;
+using todoapp.Helpers;
 
 namespace todoapp.Controllers
 {
@@ -13,10 +14,12 @@ namespace todoapp.Controllers
     public class UserController : ControllerBase
     {
         DataContextDapper _dapper;
+        ReuseableSql _reuseableSql;
 
         public UserController(IConfiguration config)
         {
             _dapper = new DataContextDapper(config);
+            _reuseableSql = new ReuseableSql(config);
         }
 
         [HttpGet("Users/{userId}")]
@@ -44,38 +47,7 @@ namespace todoapp.Controllers
         [HttpPost("Users")]
         public IActionResult UpsertUser(User userToUpsert)
         {
-            string sql = @"
-                EXEC TodoAppSchema.sp_Users_Upsert
-                    @FirstName=@FirstNameParam,
-                    @LastName=@LastnameParam,
-                    @Email=@EmailParam,
-                    @Gender=@GenderParam,
-                    @Active=@ActiveParam
-            ";
-            string parameters = "";
-
-            DynamicParameters sqlParameters = new DynamicParameters();
-            sqlParameters.Add("@FirstNameParam", userToUpsert.FirstName, DbType.String);
-            sqlParameters.Add("@LastnameParam", userToUpsert.LastName, DbType.String);
-            sqlParameters.Add("@EmailParam", userToUpsert.Email, DbType.String);
-            sqlParameters.Add("@GenderParam", userToUpsert.Gender, DbType.String);
-            sqlParameters.Add("@ActiveParam", userToUpsert.Active, DbType.Boolean);
-
-
-            if (userToUpsert.UserId != 0)
-            {
-                parameters += ", @UserId=@UserIdParam";
-                sqlParameters.Add("@UserIdParam", userToUpsert.UserId, DbType.Int32);
-            }
-
-            if (parameters.Length > 0)
-            {
-                sql += parameters;
-            }
-
-            Console.WriteLine(sql);
-
-            if (!_dapper.ExecuteSqlWithParameters(sql, sqlParameters))
+            if (_reuseableSql.UpsertUser(userToUpsert))
                 return StatusCode(401, "Failed to upsert user!");
 
             return Ok();
