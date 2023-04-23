@@ -35,7 +35,7 @@ namespace todoapp.Controllers
             if (userId != 0)
             {
                 parameters += "@UserId=@UserIdParam";
-                sqlParameters.Add("UserIdParam", userId, DbType.Int32);
+                sqlParameters.Add("@UserIdParam", userId, DbType.Int32);
             }
 
             if (parameters.Length > 0)
@@ -61,7 +61,7 @@ namespace todoapp.Controllers
             ";
 
             DynamicParameters sqlParameters = new DynamicParameters();
-            sqlParameters.Add("UserIdParam", userId, DbType.Int32);
+            sqlParameters.Add("@UserIdParam", userId, DbType.Int32);
 
             if (!_dapper.ExecuteSqlWithParameters(sql, sqlParameters))
                 return StatusCode(400, "Failed to delete user!");

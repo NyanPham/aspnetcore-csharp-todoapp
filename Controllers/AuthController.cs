@@ -68,8 +68,10 @@ namespace todoapp.Controllers
 
             DynamicParameters sqlParameters = new DynamicParameters();
             sqlParameters.Add("@EmailParam", userForRegistration.Email, DbType.String);
-            sqlParameters.Add("PasswordHashParam", passwordHash, DbType.Binary);
-            sqlParameters.Add("PasswordSaltParam", passwordSalt, DbType.Binary);
+            sqlParameters.Add("@PasswordHashParam", passwordHash, DbType.Binary);
+            sqlParameters.Add("@PasswordSaltParam", passwordSalt, DbType.Binary);
+
+            Console.WriteLine(sqlParameters.Get<string>("@EmailParam"));
 
             if (!_dapper.ExecuteSqlWithParameters(sqlAddAuth, sqlParameters))
                 return StatusCode(401, "Failed to register!");
@@ -91,7 +93,7 @@ namespace todoapp.Controllers
                 ";
 
                 DynamicParameters removeAuthParameters = new DynamicParameters();
-                removeAuthParameters.Add("EmailParam", userToAdd.Email, DbType.String);
+                removeAuthParameters.Add("@EmailParam", userToAdd.Email, DbType.String);
                 _dapper.ExecuteSqlWithParameters(sqlRemoveAuth, removeAuthParameters);
 
                 return StatusCode(401, "Failed to add user after register!");

@@ -36,7 +36,7 @@ namespace todoapp.Data
             IDbConnection dbConnection = new SqlConnection(_config.GetConnectionString("DefaultConnection"));
             return dbConnection.Execute(sql);
         }
-
+            
         public bool ExecuteSqlWithParameters(string sql, DynamicParameters parameters)
         {
             IDbConnection dbConnection = new SqlConnection(_config.GetConnectionString("DefaultConnection"));
